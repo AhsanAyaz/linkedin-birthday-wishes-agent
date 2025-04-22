@@ -2,7 +2,6 @@ from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from browser_use import Agent, Browser
 import asyncio
-import os
 from dotenv import dotenv_values
 config = dotenv_values(".env")
 browser = Browser()
@@ -14,21 +13,45 @@ PASSWORD = config.get("PASSWORD")
 
 GITHUB_URL = config.get("GITHUB_URL")
 
-async def main():
+task_github=f"""
+  Open browser, then go to {GITHUB_URL} and let me how many followers does he have
+"""
+
+task_linkedin=f"""
+  Open browser, wait for user to select user profile if needed.
+  Go to https://linkedin.com, login with username {USERNAME} and password {PASSWORD}. 
+  Handle multi-factor authentication if prompted (user intervention may be required).
+  Wait for user to login.
+  Once logged in, navigate to the main messaging page.
+  Carefully examine each unread message thread one by one.
+  If a message thread appears to be ONLY a simple birthday wish (like 'Happy birthday!', 'HBD!', 'Hope you have a great day!'), respond with a short, polite thank you message. Choose randomly from variants like: 'Thanks so much!', 'Appreciate the birthday wishes!', 'Thank you!', 'Thanks for thinking of me!'.
+  If a message thread contains MORE than just a simple birthday wish, OR is clearly not a birthday wish, DO NOT RESPOND. Just mark it as read (if possible by clicking into it) and move to the next.
+  Prioritize accuracy: It's better to miss replying to a birthday wish than to reply incorrectly to a non-birthday message.
+  Stop after checking/replying to about 10-15 unread messages or if there are no more unread messages.
+  Provide a summary of actions taken (e.g., 'Replied to 5 birthday messages, marked 3 other messages as read')
+
+"""
+
+async def run_github_task():
+  print("--- Running GitHub Follower Check ---")
   agent = Agent(
-    task=f"""
-      Go to https://linkedin.com, login with username: '{USERNAME}' and password: '{PASSWORD}'. 
-      Then go to messages, and mark all messages as read, on by one, by responding something like the following:
-      'Thanks, I appreciate it',  'Thank you for the wishes', etc.
-      Do not respond to any other message which is not a birthday wish. Just mark it as read.
-    """,
-    # task=f"""
-    #   Open browser, {GITHUB_URL} then go to  and let me how many followers does he have
-    # """,
+    task=task_github, # Feeding the GitHub task
     llm=llm,
     browser=browser
   )
   result = await agent.run()
-  print(result)
+  print(f"GitHub Result: {result}")
+  await browser.close() # Close the browser when done
 
-asyncio.run(main())
+async def run_linkedin_task():
+  print("--- Running LinkedIn Message Check ---")
+  agent = Agent(
+    task=task_linkedin,
+    llm=llm,  
+    browser=browser
+  )
+  result = await agent.run()
+  print(f"LinkedIn Result: {result}")
+  await browser.close() # Close the browser when done 
+
+asyncio.run(run_github_task())
