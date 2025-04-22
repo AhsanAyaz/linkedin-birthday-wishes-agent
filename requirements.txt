@@ -1,0 +1,4 @@
+langchain_openai
+browser_use
+langchain-google-genai
+python-dotenv
